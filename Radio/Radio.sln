@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Radio", "Radio\Radio.csproj", "{3C7E323B-602D-4C5F-84E0-AC67D5AC8942}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.csproj", "{7F0D4AC6-7443-4731-82D1-AEFB6807B2BE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3C7E323B-602D-4C5F-84E0-AC67D5AC8942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C7E323B-602D-4C5F-84E0-AC67D5AC8942}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C7E323B-602D-4C5F-84E0-AC67D5AC8942}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C7E323B-602D-4C5F-84E0-AC67D5AC8942}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F0D4AC6-7443-4731-82D1-AEFB6807B2BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F0D4AC6-7443-4731-82D1-AEFB6807B2BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F0D4AC6-7443-4731-82D1-AEFB6807B2BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F0D4AC6-7443-4731-82D1-AEFB6807B2BE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
