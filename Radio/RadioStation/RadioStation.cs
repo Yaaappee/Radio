@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading;
+
 using Un4seen.Bass;
 using Un4seen.Bass.Misc;
 
@@ -28,37 +31,66 @@ namespace RadioStation
         public RadioStation()
         {
             BassNet.Registration("tobij@gnail.pw", "2X18241914151432");
-
+            Bass.BASS_RecordInit(-1);
             var isDeviceInitialize = Bass.BASS_Init(device, freq, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);
+
             if (isDeviceInitialize)
             {
-                var song = 1;
-                Bass.BASS_RecordInit(-1);
-
-                // recHandle = Bass.BASS_RecordStart(freq, recordChanelsCount, BASSFlag.BASS_STREAM_DECODE, null, IntPtr.Zero);
-                // recHandle = Bass.BASS_StreamCreateFile(fileName, 0, 0, BASSFlag.BASS_STREAM_DECODE);
-
-                // create an encoder instance (e.g. for MP3 use EncoderLAME):
-                var lame = new EncoderLAME(recHandle)
-                {
-                    LAME_Bitrate = (int)BaseEncoder.BITRATE.kbps_56,
-                    LAME_Mode = EncoderLAME.LAMEMode.Mono,
-                    LAME_TargetSampleRate = (int)BaseEncoder.SAMPLERATE.Hz_22050,
-                };
+                recHandle = Bass.BASS_StreamCreate(freq, recordChanelsCount, BASSFlag.BASS_STREAM_DECODE, null, IntPtr.Zero);
+                var lame = EncoderLame();
                 lame.Start(null, IntPtr.Zero, false);
 
-                // create a StreamingServer instance (e.g. SHOUTcast) using the encoder:
-                /*
-                ICEcast icecast = new ICEcast(lame, false);
-                icecast.ServerAddress = "localhost";
-                icecast.ServerPort = 8000;
-                icecast.AdminPassword = "ibon9p";
-                icecast.AdminUsername = "Yaaappee";
-                icecast.Password = "ibon9p";
-                icecast.PublicFlag = true;
-                icecast.SongTitle = fileName; 
-                */
-                var icecast = new SHOUTcast(lame, true)
+                // ICEcast server = IceCast(lame);
+                SHOUTcast server = ShoutCast(lame);
+
+                // use the BroadCast class to control streaming:
+                broadCast = new BroadCast(server) { AutoReconnect = true };
+                broadCast.Notification += OnBroadCastNotification;
+                broadCast.AutoConnect();
+
+                while (!broadCast.IsConnected)
+                {
+                }
+
+                while (true)
+                {
+                    WriteErrorMessage();
+                    Bass.BASS_StreamFree(recHandle);
+                    fileName = RandomFileName();
+
+                    //recHandle = Bass.BASS_RecordStart(freq, recordChanelsCount, BASSFlag.BASS_STREAM_DECODE, null, IntPtr.Zero);
+                    recHandle = Bass.BASS_StreamCreateFile(fileName, 0, 0, BASSFlag.BASS_STREAM_DECODE);
+                    lame.ChannelHandle = recHandle;
+                    Bass.BASS_ChannelUpdate(recHandle, 0);
+                    server.UpdateTitle(ConvertedString(fileName), null);
+                    Console.WriteLine(fileName);
+
+                    while (Bass.BASS_ChannelIsActive(recHandle) == BASSActive.BASS_ACTIVE_PLAYING)
+                    {
+                        var buff = new byte[200];
+                        Bass.BASS_ChannelGetData(recHandle, buff, buff.Length);
+                    }
+                }
+            }
+        }
+
+        private static ICEcast IceCast(EncoderLAME lame)
+        {
+            ICEcast server = new ICEcast(lame, false)
+                {
+                    ServerAddress = "localhost",
+                    ServerPort = 8000,
+                    AdminPassword = "ibon9p",
+                    AdminUsername = "Yaaappee",
+                    Password = "ibon9p",
+                    PublicFlag = true
+                };
+            return server;
+        }
+
+        private static SHOUTcast ShoutCast(EncoderLAME lame)
+        {
+            var server = new SHOUTcast(lame, true)
                 {
                     ServerAddress = "localhost",
                     ServerPort = 8000,
@@ -67,34 +99,18 @@ namespace RadioStation
                     PublicFlag = true,
                     SongTitle = ConvertedString(NoTitle)
                 };
+            return server;
+        }
 
-                // use the BroadCast class to control streaming:
-                broadCast = new BroadCast(icecast) { AutoReconnect = true };
-                broadCast.Notification += OnBroadCastNotification;
-                broadCast.AutoConnect();
-
-                while (true)
+        private EncoderLAME EncoderLame()
+        {
+            var lame = new EncoderLAME(recHandle)
                 {
-                    fileName = RandomFileName();
-                    while (Bass.BASS_ChannelIsActive(recHandle) == BASSActive.BASS_ACTIVE_PLAYING)
-                    {
-                        var buff = new byte[200];
-                        Bass.BASS_ChannelGetData(recHandle, buff, buff.Length);
-                    }
-
-                    WriteErrorMessage();
-                    Bass.BASS_StreamFree(recHandle);
-                    song++;
-
-                    // recHandle = Bass.BASS_RecordStart(freq, 2, BASSFlag.BASS_DEFAULT, null, IntPtr.Zero);
-                    recHandle = Bass.BASS_StreamCreateFile(fileName, 0, 0, BASSFlag.BASS_STREAM_DECODE);
-                    Console.WriteLine(recHandle);
-                    lame.ChannelHandle = recHandle;
-                    Bass.BASS_ChannelUpdate(recHandle, 0);
-                    icecast.UpdateTitle(ConvertedString(song + " - " + fileName), null);
-                    Console.WriteLine(icecast.SongTitle);
-                }
-            }
+                    LAME_Bitrate = (int)BaseEncoder.BITRATE.kbps_128,
+                    LAME_Mode = EncoderLAME.LAMEMode.Mono,
+                    LAME_TargetSampleRate = (int)BaseEncoder.SAMPLERATE.Hz_44100,
+                };
+            return lame;
         }
 
         private static void WriteErrorMessage()
@@ -105,17 +121,20 @@ namespace RadioStation
         private static string RandomFileName()
         {
             var dinfo = new DirectoryInfo(directoryName);
-            var files = dinfo.GetFiles();
+            var files = dinfo.GetFiles().Where(p => p.Name.Contains(".mp3")).ToList();
             var r = new Random();
-            var info = new FileInfo(files[r.Next(files.Length)].FullName);
+            var info = new FileInfo(files[r.Next(files.Count)].FullName);
             return info.FullName;
         }
 
         private static string ConvertedString(string text)
         {
-            byte[] sourceByteArray = Encoding.Default.GetBytes(text);
-            byte[] resultByteArray = Encoding.Convert(Encoding.Default, Encoding.UTF8, sourceByteArray);
-            return Encoding.UTF8.GetString(resultByteArray);
+            //return text;
+            Encoding srcEncoding = Encoding.GetEncoding("windows-1251");
+            Encoding trgEncoding = Encoding.Default;
+            byte[] sourceByteArray = srcEncoding.GetBytes(text);
+            byte[] resultByteArray = Encoding.Convert(srcEncoding, trgEncoding, sourceByteArray);
+            return trgEncoding.GetString(resultByteArray);
         }
 
         private void OnBroadCastNotification(object sender, BroadCastEventArgs e)
