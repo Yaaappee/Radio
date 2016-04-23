@@ -10,12 +10,6 @@ namespace Radio
         public MainWindow()
         {
             InitializeComponent();
-            
-        }
-
-        public class Name
-        {
-            
         }
     }
 }
